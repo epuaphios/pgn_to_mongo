@@ -47,38 +47,40 @@ def get_file_list(local_path):
 
 
 def get_data(pgn_file):
-    node = chess.pgn.read_game(pgn_file)
-
-    while node is not None:
-        data = node.headers
-        data["moves"] = []
-
-        while node.variations:
-            next_node = node.variation(0)
-            data["moves"].append(
-                re.sub("\{.*?\}", "", node.board().san(next_node.move)))
-            node = next_node
-
+    while True:
         node = chess.pgn.read_game(pgn_file)
-        queW.put(data)
-        print("que size add: " + str(queW.qsize()))
+
+        while node is not None:
+            data = node.headers
+            data["moves"] = []
+
+            while node.variations:
+                next_node = node.variation(0)
+                data["moves"].append(
+                    re.sub("\{.*?\}", "", node.board().san(next_node.move)))
+                node = next_node
+
+            node = chess.pgn.read_game(pgn_file)
+            queW.put(data)
+            print("que size add: " + str(queW.qsize()))
         # mongo_write(queW)
 
 
 def mongo_write(queW):
-    out_dict = {}
-    data = queW.get()
+    while True:
+        out_dict = {}
+        data = queW.get()
 
-    if len(data["moves"]) >= 20:
-        for key in data.keys():
-            if key == 'Result':
-                out_dict['Result'] = result(data.get('Result'))
-            if key == 'moves':
-                out_dict['moves'] = data.get('moves')
+        if len(data["moves"]) >= 20:
+            for key in data.keys():
+                if key == 'Result':
+                    out_dict['Result'] = result(data.get('Result'))
+                if key == 'moves':
+                    out_dict['moves'] = data.get('moves')
 
-        mycol.insert_one(out_dict)
-        queW.task_done()
-        print("que size delete: " + str(queW.qsize()))
+            mycol.insert_one(out_dict)
+            queW.task_done()
+            print("que size delete: " + str(queW.qsize()))
 
 
 def result(result):
@@ -104,12 +106,12 @@ for file in file_list:
     pgn_file = open(str(file), encoding='ISO-8859-1')
     # log('convert file ' + file.name)
 
-for i in range(5):
+for i in range(2):
     t = Thread(target=get_data, args=(pgn_file,))
     t.daemon = True
     t.start()
 
-for i in range(5):
+for i in range(2):
     t = Thread(target=mongo_write, args=(queW,))
     t.daemon = True
     t.start()
