@@ -106,12 +106,12 @@ for file in file_list:
     pgn_file = open(str(file), encoding='ISO-8859-1')
     # log('convert file ' + file.name)
 
-for i in range(2):
+for i in range(5):
     t = Thread(target=get_data, args=(pgn_file,))
     t.daemon = True
     t.start()
 
-for i in range(2):
+for i in range(5):
     t = Thread(target=mongo_write, args=(queW,))
     t.daemon = True
     t.start()
